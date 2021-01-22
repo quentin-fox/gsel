@@ -107,6 +107,10 @@ func (m model) View() string {
 func executeCmd(gitCmd []string, hash string) {
 	args := append(gitCmd, hash)
 	cmd := exec.Command("git", args...)
+	// necessary to make interactive programs run
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	fmt.Println(cmd)
 	err := cmd.Run()
 	checkErr(err)
