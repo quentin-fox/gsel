@@ -37,7 +37,6 @@ type model struct {
 	choices []commit
 	cursor int
 	maxCursor int
-	confirming bool
 	cmd []string
 }
 
@@ -46,56 +45,34 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if (m.confirming) {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			case "enter":
-				executeCmd(m.cmd, m.choices[m.cursor].hash)
-				return m, tea.Quit
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
 			}
-		}
-	} else {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			case "up", "k":
-				if m.cursor > 0 {
-					m.cursor--
+		case "down", "j":
+			if m.cursor < len(m.choices) - 1 {
+				m.cursor++
+				if m.cursor > m.maxCursor {
+					m.maxCursor = m.cursor
 				}
-			case "down", "j":
-				if m.cursor < len(m.choices) - 1 {
-					m.cursor++
-					if m.cursor > m.maxCursor {
-						m.maxCursor = m.cursor
-					}
-				}
-			case "enter":
-				m.confirming = true
 			}
+		case "enter":
+			executeCmd(m.cmd, m.choices[m.cursor].hash)
+			return m, tea.Quit
 		}
 	}
 	return m, nil
 }
 
 func (m model) View() string {
-	
-	if m.confirming {
-		out := "Selected commit:"
-		commit := m.choices[m.cursor]
-		commitLine := prettifyCommit(false, commit) 
-
-		out += commitLine + "\n"
-		out += "Command: git " + strings.Join(m.cmd, " ") + " " + commit.hash
-
-		return out
-	}
-
-	out := ""
+	currentChoice := m.choices[m.cursor]
+	// initial two spaces align it with the choices
+	out := "  git " + strings.Join(m.cmd, " ") + " " + currentChoice.hash[0:8] + "\n\n"
 	
 	maxChoices := len(m.choices)
 	// once we get 5 from the end, start displaying more commits
@@ -167,7 +144,6 @@ func getInitialModel() (model) {
 	return model{
 		choices: commits,
 		cursor: 0,
-		confirming: false,
 	}
 }
 
